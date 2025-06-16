@@ -1,159 +1,116 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
 
 const Todos = () => {
-  const user = JSON.parse(localStorage.getItem("user"));
-  const [todos, setTodos] = useState([]);
-  const [newTodo, setNewTodo] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState("all");
+  const [apiTodos, setApiTodos] = useState([]);
+  const [addedTodos, setAddedTodos] = useState([]);
+  const [showModal, setShowModal] = useState(false);
+  const [form, setForm] = useState({
+    title: "",
+    description: "",
+  });
 
-  // GET todos
+  // 1. DummyJSON’dan todos ni yuklab olish
   useEffect(() => {
-    if (user) {
-      axios
-        .get(`https://dummyjson.com/todos/user/${user.id}`)
-        .then((res) => {
-          setTodos(res.data.todos);
-          setLoading(false);
-        })
-        .catch((err) => {
-          console.error("Error loading todos", err);
-          setLoading(false);
-        });
-    }
-  }, [user]);
+    fetch("https://dummyjson.com/todos?limit=10")
+      .then((res) => res.json())
+      .then((data) => {
+        const todos = data.todos.map((t) => ({
+          title: t.todo,
+          description: t.completed ? "✅ Completed" : "❌ Not Completed",
+        }));
+        setApiTodos(todos);
+      })
+      .catch((err) => console.error("Error fetching todos:", err));
+  }, []);
 
-  // POST new todo
-  const handleAdd = async () => {
-    if (!newTodo.trim()) return;
+  const handleAddTodo = (newTodo) => {
+    setAddedTodos((prev) => [...prev, newTodo]);
+  };
 
-    try {
-      const res = await axios.post("https://dummyjson.com/todos/add", {
-        todo: newTodo,
-        completed: false,
-        userId: user.id,
-      });
-
-      setTodos((prev) => [res.data, ...prev]);
-      setNewTodo("");
-    } catch (err) {
-      console.error("Add todo error", err);
+  const handleModalSubmit = (e) => {
+    e.preventDefault();
+    if (form.title && form.description) {
+      handleAddTodo(form);
+      setForm({ title: "", description: "" });
+      setShowModal(false);
     }
   };
 
-  // DELETE todo
-  const handleDelete = async (id) => {
-    try {
-      await axios.delete(`https://dummyjson.com/todos/${id}`);
-      setTodos((prev) => prev.filter((t) => t.id !== id));
-    } catch (err) {
-      console.error("Delete todo error", err);
-    }
-  };
-
-  // PATCH toggle completed
-  const toggleComplete = async (todo) => {
-    try {
-      const res = await axios.put(`https://dummyjson.com/todos/${todo.id}`, {
-        completed: !todo.completed,
-      });
-
-      setTodos((prev) =>
-        prev.map((t) => (t.id === todo.id ? { ...t, completed: res.data.completed } : t))
-      );
-    } catch (err) {
-      console.error("Toggle error", err);
-    }
-  };
-
-  const filteredTodos = todos.filter((todo) =>
-    filter === "completed"
-      ? todo.completed
-      : filter === "pending"
-      ? !todo.completed
-      : true
-  );
-
-  if (!user) {
-    return <p className="text-center mt-10 text-red-600">Please login to view your todos.</p>;
-  }
-
-  if (loading) {
-    return <p className="text-center mt-10">Loading todos...</p>;
-  }
+  const allTodos = [...apiTodos, ...addedTodos];
 
   return (
-    <div className="max-w-2xl mx-auto mt-10">
-      <h2 className="text-2xl font-bold mb-4">My Todos</h2>
-
-      {/* Add todo input */}
-      <div className="flex gap-2 mb-4">
-        <input
-          value={newTodo}
-          onChange={(e) => setNewTodo(e.target.value)}
-          placeholder="Enter new todo"
-          className="flex-1 p-2 border rounded"
-        />
+    <div className="max-w-2xl mx-auto">
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-2xl font-bold">Todos</h1>
         <button
-          onClick={handleAdd}
-          className="bg-blue-600 text-white px-4 py-2 rounded"
+          onClick={() => setShowModal(true)}
+          className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
         >
-          Add
+          + Add Todo
         </button>
       </div>
 
-      {/* Filters */}
-      <div className="flex gap-3 mb-4">
-        {["all", "completed", "pending"].map((type) => (
-          <button
-            key={type}
-            onClick={() => setFilter(type)}
-            className={`px-3 py-1 rounded border ${
-              filter === type ? "bg-blue-600 text-white" : "bg-white"
-            }`}
-          >
-            {type.charAt(0).toUpperCase() + type.slice(1)}
-          </button>
-        ))}
-      </div>
-
-      {/* Todo list */}
-      <ul className="space-y-3">
-        {filteredTodos.length === 0 ? (
-          <p className="text-gray-500">No todos found.</p>
-        ) : (
-          filteredTodos.map((todo) => (
+      {allTodos.length === 0 ? (
+        <p>Loading...</p>
+      ) : (
+        <ul className="space-y-2">
+          {allTodos.map((todo, index) => (
             <li
-              key={todo.id}
-              className={`flex items-center justify-between p-3 border rounded ${
-                todo.completed ? "bg-green-100" : "bg-white"
-              }`}
+              key={index}
+              className="bg-white p-4 rounded shadow flex flex-col gap-1"
             >
-              <div className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  checked={todo.completed}
-                  onChange={() => toggleComplete(todo)}
-                />
-                <span
-                  className={`${
-                    todo.completed ? "line-through text-gray-500" : ""
-                  }`}
-                >
-                  {todo.todo}
-                </span>
-              </div>
-              <button
-                onClick={() => handleDelete(todo.id)}
-                className="text-red-500 hover:underline"
-              >
-                Delete
-              </button>
+              <span className="font-semibold">{todo.title}</span>
+              <span className="text-sm text-gray-500">{todo.description}</span>
             </li>
-          ))
-        )}
-      </ul>
+          ))}
+        </ul>
+      )}
+
+      {/* Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center z-50">
+          <div className="bg-white p-6 rounded w-96 shadow-lg">
+            <h2 className="text-xl font-bold mb-4">Add New Todo</h2>
+            <form onSubmit={handleModalSubmit} className="space-y-4">
+              <input
+                type="text"
+                placeholder="Title"
+                value={form.title}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, title: e.target.value }))
+                }
+                className="w-full border border-gray-300 p-2 rounded"
+                required
+              />
+              <textarea
+                placeholder="Description"
+                value={form.description}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, description: e.target.value }))
+                }
+                className="w-full border border-gray-300 p-2 rounded"
+                rows="3"
+                required
+              />
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-100"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+                >
+                  Add
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

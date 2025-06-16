@@ -8,6 +8,8 @@ import Todos from "./pages/Todos";
 import Cart from "./pages/Cart";
 import Navbar from "./components/Navbar";
 import PrivateRoute from "./components/PrivateRoute";
+import Users from "./pages/Users";
+import Posts from "./pages/Posts";
 
 function App() {
   return (
@@ -32,6 +34,14 @@ function App() {
               </PrivateRoute>
             }
           />
+
+          <Route path="/Users" element={
+            <PrivateRoute>
+            <Users />
+            </PrivateRoute>
+            }
+             />
+
           <Route
             path="/cart"
             element={
@@ -45,6 +55,14 @@ function App() {
             element={
               <PrivateRoute>
                 <Todos />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/posts"
+            element={
+              <PrivateRoute>
+                <Posts />
               </PrivateRoute>
             }
           />
